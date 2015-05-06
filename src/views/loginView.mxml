@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="Simple Login" actionBarVisible="false" xmlns:components="components.*" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			
+			import com.gamedonia.sdk.Gamedonia;
+			import com.gamedonia.sdk.Credentials;
+			import com.gamedonia.sdk.GDOptions;
+			import com.gamedonia.sdk.GDUser;
+			import com.gamedonia.sdk.GamedoniaUsers;
+			import com.gamedonia.sdk.social.Facebook;
+			
+			import components.popUpComponent;
+			import spark.formatters.DateTimeFormatter;
+			
+			private static const READ_PERMISSIONS:Array = ["read_stream", "read_friendlists"];
+			
+			private static const API_KEY:String = "";
+			private static const SECRET:String = "";
+			
+			private static const FACEBOOK_APP_ID:String = "";
+			
+			public static var popup:popUpComponent = new popUpComponent();
+			private static var fb:Facebook;
+			
+			protected function init() : void {
+				
+				// Set up constraints
+				var left_constraint:Number = this.parent.width - this.parent.width*0.78;
+				
+				mail_label.setConstraintValue("left", left_constraint);
+				login_textInput.setConstraintValue("left", left_constraint);
+				pass_label.setConstraintValue("left", left_constraint);
+				pass_textInput.setConstraintValue("left", left_constraint);
+				
+				login_button.setConstraintValue("left", left_constraint);
+				facebook_button.setConstraintValue("left", left_constraint);
+				signup_button.setConstraintValue("left", left_constraint);
+				remember_button.setConstraintValue("left", left_constraint);
+				
+				
+				// Initialize
+				if ( API_KEY == "" || SECRET == "" ) {
+					
+					popup.show ( "Missing Api Key/Secret.\nCheck the README.txt." );
+					
+				} else {
+					
+					Gamedonia.initialize( API_KEY, SECRET, "http://api.gamedonia.com", "v1");
+				}	
+			}
+			
+			protected function login_clickHandler( event:MouseEvent ) : void {
+				
+				var loginTxt:String = login_textInput.text;
+				var passTxt:String = pass_textInput.text;
+				
+				if ( loginTxt != "" && passTxt != "" ) {
+					
+					GamedoniaUsers.loginUserWithEmail( loginTxt, passTxt, function (success:Boolean) : void {
+						
+						if (success) {
+							
+							navigator.pushView( userDetailsView );
+							
+						} else {
+							
+							popup.show ( "User or password are incorrect." );
+						}
+					});
+					
+				} else{
+					
+					popup.show ( "One or more fields are empty." );
+				}
+			}
+			
+			protected function facebook_clickHandler( event:MouseEvent ) : void {
+				
+				fb = Facebook.getInstance();
+				fb.logEnabled = true;
+				fb.init( FACEBOOK_APP_ID, null, true );
+				
+				if ( fb.isSessionOpen ) {
+					
+					onFacebookOpenSession( true, true, null );
+					
+				} else {
+					
+					fb.openSessionWithReadPermissions( READ_PERMISSIONS, onFacebookOpenSession, true );
+				}
+			}
+			
+			protected function onFacebookOpenSession( $success:Boolean, $userCancelled:Boolean, $error:String ) : void {
+				
+				if ( $success ) {
+					
+					fb.requestWithGraphPath( "/me", null, "GET", onFacebookMe );
+					
+				} else {
+					
+					popup.show ( "Unable to open session with Facebook." );
+					trace ($error);
+					trace ($userCancelled);
+				}
+				
+			}
+			
+			protected function onFacebookMe ( data:Object ) : void {
+				
+				var fb_name:String = data.name; 
+				var fb_uid:String = data.id;
+				var fb_access_token:String = fb.accessToken;
+				
+				var credentials:Credentials = new Credentials();
+				credentials.fb_uid = fb_uid;
+				credentials.fb_access_token = fb_access_token;
+				
+				var user:GDUser = new GDUser();
+				user.credentials = credentials;
+				user.profile.nickname = fb_name;
+				
+				var currentDate:String = currentDateTimeString();
+				user.profile["date"] = currentDate;
+				
+				GamedoniaUsers.createUser( user, function ( success:Boolean ) : void {
+					
+					GamedoniaUsers.loginUserWithFacebook( fb_uid, fb_access_token, onFacebookLogin );
+				});
+			}
+			
+			protected function onFacebookLogin( success:Boolean ) : void {
+				
+				if ( success ) {
+					
+					navigator.pushView ( userDetailsView );
+					
+				} else {
+					
+					popup.show( "Unable to login with Facebook." );
+				}
+			}
+			
+			private function currentDateTimeString() : String {       
+				
+				var CurrentDateTime:Date = new Date();
+				var CurrentDF:DateTimeFormatter = new DateTimeFormatter();
+				
+				CurrentDF.dateTimePattern = "MM/dd/yyyy HH:mm:ss"
+				var DateTimeString:String = CurrentDF.format( CurrentDateTime );
+				
+				return DateTimeString;
+			}
+			
+		]]>
+	</fx:Script>
+	<s:BitmapImage source="@Embed('../assets/background@2x.png')" 
+				   left="0" right="0"  
+				   width="100%" height="100%" 
+				   />
+	
+	<s:Label id="mail_label" y="10" left="70" fontFamily="Arial" fontSize="15" text="eMail"/>
+	<s:Label id="pass_label" y="96" left="70" fontFamily="Arial" fontSize="15" text="Password"/>
+	<s:Button id="login_button" y="199" left="70" right="10" label="Login" chromeColor="#6eac2b"
+			  click="login_clickHandler(event)" color="#FFFFFF" fontFamily="Arial" fontSize="15"
+			  fontStyle="normal" fontWeight="bold" textShadowAlpha="0" lineThrough="false" textDecoration="none"/>
+	<s:Button id="facebook_button" y="250" left="70" right="10" label="Facebook" chromeColor="#0055a8"
+			  click="facebook_clickHandler(event)" color="#FFFFFF" fontFamily="Arial" fontSize="15" textShadowAlpha="0"/>
+	<s:Button id="signup_button" y="301" left="70" right="10" label="Sign Up" chromeColor="#6eac2b"
+			  click="navigator.pushView(createUserView)" color="#FFFFFF" fontFamily="Arial"
+			  fontSize="15" textShadowAlpha="0"/>
+	<s:Button id="remember_button" y="352" left="70" right="10" label="Remember Password" chromeColor="#6eac2b"
+			  click="navigator.pushView(resetPasswordView)" color="#FFFFFF" fontFamily="Arial"
+			  fontSize="15" textShadowAlpha="0"/>
+	<s:TextInput id="login_textInput" y="33" left="70" right="10"/>
+	<s:TextInput id="pass_textInput" y="119" left="70" right="10" displayAsPassword="true"/>
+</s:View>

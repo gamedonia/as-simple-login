@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" title="createUserView" actionBarVisible="false" creationComplete="init()">
+	<fx:Declarations>
+		<!-- Place non-visual elements (e.g., services, value objects) here -->
+	</fx:Declarations>
+	<fx:Script>
+		<![CDATA[
+			import com.gamedonia.sdk.Credentials;
+			import com.gamedonia.sdk.GDOptions;
+			import com.gamedonia.sdk.GDUser;
+			import com.gamedonia.sdk.Gamedonia;
+			import com.gamedonia.sdk.GamedoniaUsers;
+			
+			import components.popUpComponent;
+			import spark.formatters.DateTimeFormatter;
+			
+			public var popup:popUpComponent = new popUpComponent();
+			
+			protected function init():void {
+				
+				// Set up constraints
+				var left_constraint:Number = this.parent.width - this.parent.width*0.78;
+				
+				mail_label.setConstraintValue("left", left_constraint);
+				mail_textInput.setConstraintValue("left", left_constraint);
+				pass_label.setConstraintValue("left", left_constraint);
+				pass_textInput.setConstraintValue("left", left_constraint);
+				rePass_label.setConstraintValue("left", left_constraint);
+				rePass_textInput.setConstraintValue("left", left_constraint);
+				nick_label.setConstraintValue("left", left_constraint);
+				nick_textInput.setConstraintValue("left", left_constraint);
+				
+				create_button.setConstraintValue("left", left_constraint);
+				cancel_button.setConstraintValue("left", left_constraint);
+				
+				
+			}
+			
+			protected function createUser_clickHandler( event:MouseEvent ):void {
+				
+				var mailTxt:String = mail_textInput.text;
+				var passTxt:String = pass_textInput.text;
+				var rePassTxt:String = rePass_textInput.text;
+				var nickTxt:String = nick_textInput.text;
+				
+				
+				
+				if ( mailTxt != "" && passTxt!="" && rePassTxt!="" && nickTxt!="" ) {
+					
+					if ( passTxt == rePassTxt ) {
+						
+						var user:GDUser = new GDUser();
+						var credentials:Credentials = new Credentials();
+						credentials.email = mailTxt;
+						credentials.password = passTxt;
+						
+						user.credentials = credentials;
+						user.profile.nickname = nickTxt;
+						
+						var currentDate:String = currentDateTimeString();
+						user.profile["date"] = currentDate;
+						
+						GamedoniaUsers.createUser( user, function ( success:Boolean ) : void {
+							
+							if ( success ) {
+								
+								GamedoniaUsers.loginUserWithEmail( mailTxt, passTxt, function ( success:Boolean ) : void {
+									
+									if ( success ) {
+										
+										navigator.pushView( userDetailsView );
+										
+									} else {
+										
+										popup.show( "User or password are incorrect." );
+									}
+								});
+							} else {
+								
+								popup.show( "Failed to create user." );
+							}
+						});
+					} else {
+						
+						popup.show( "Passwords are different." );
+					}
+					
+				} else {
+					
+					popup.show( "One or more fields are empty." );
+				}
+				
+			}
+			
+			private function currentDateTimeString():String
+			{               
+				var CurrentDateTime:Date = new Date();
+				var CurrentDF:DateTimeFormatter = new DateTimeFormatter();
+				CurrentDF.dateTimePattern = "MM/dd/yyyy HH:mm:ss"
+				
+				var DateTimeString:String = CurrentDF.format( CurrentDateTime );
+				return DateTimeString;
+			}
+		]]>
+	</fx:Script>
+	
+	<s:BitmapImage source="@Embed('../assets/background@2x.png')" 
+				   left="0" right="0"  
+				   width="100%" height="100%" 
+				   />
+	<s:Label id="mail_label" y="14" left="71" fontFamily="Arial" fontSize="15" text="eMail*"/>
+	<s:Label id="pass_label" y="83" left="70" fontFamily="Arial" fontSize="15" text="Password*"/>
+	<s:Label id="rePass_label" y="155" left="70" fontFamily="Arial" fontSize="15" text="Repeat Password*"/>
+	<s:Label id="nick_label" y="229" left="70" fontFamily="Arial" fontSize="15" text="Nickname*"/>
+	<s:Button id="create_button" y="313" left="70" right="10" label="Create" chromeColor="#6eac2b"
+			  click="createUser_clickHandler(event)" color="#FFFFFF" fontFamily="Arial"
+			  fontSize="15" textShadowAlpha="0"/>
+	<s:Button id="cancel_button" y="368" left="70" right="10" label="Cancel" chromeColor="#6eac2b"
+			  click="navigator.popView()" color="#FFFFFF" fontFamily="Arial" fontSize="15" textShadowAlpha="0"/>
+	<s:TextInput id ="mail_textInput" y="37" left="70" right="10"/>
+	<s:TextInput id ="pass_textInput" y="106" left="70" right="10" displayAsPassword="true"/>
+	<s:TextInput id ="rePass_textInput" y="178" left="70" right="10" displayAsPassword="true"/>
+	<s:TextInput id ="nick_textInput" y="252" left="70" right="10"/>
+</s:View>
